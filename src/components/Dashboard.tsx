@@ -1,34 +1,40 @@
-import { TestCase } from '@/types';
+import { TestCase, TestSuite } from '@/types';
 import { CheckCircle2, XCircle, AlertCircle, Clock, ListTodo } from 'lucide-react';
 
 interface DashboardProps {
   testCases: TestCase[];
+  testSuites: TestSuite[];
   onNavigate: (view: string) => void;
 }
 
-export function Dashboard({ testCases, onNavigate }: DashboardProps) {
-  const total = testCases.length;
-  const passed = testCases.filter(tc => tc.status === 'Pass').length;
-  const failed = testCases.filter(tc => tc.status === 'Fail').length;
-  const blocked = testCases.filter(tc => tc.status === 'Blocked').length;
-  const untested = testCases.filter(tc => tc.status === 'Untested').length;
-  const skipped = testCases.filter(tc => tc.status === 'Skipped').length;
+export function Dashboard({ testCases, testSuites, onNavigate }: DashboardProps) {
+  const visibleCases = testCases.filter(tc => {
+    const suite = testSuites.find(s => s.id === tc.testSuiteId);
+    return !suite?.isHidden;
+  });
+
+  const total = visibleCases.length;
+  const passed = visibleCases.filter(tc => tc.qaStatus === 'Pass').length;
+  const failed = visibleCases.filter(tc => tc.qaStatus === 'Fail').length;
+  const blocked = visibleCases.filter(tc => tc.qaStatus === 'Blocked').length;
+  const untested = visibleCases.filter(tc => tc.qaStatus === 'Untested').length;
+  const skipped = visibleCases.filter(tc => tc.qaStatus === 'Skipped').length;
 
   const passRate = total > 0 ? Math.round((passed / total) * 100) : 0;
 
   const stats = [
     { label: 'Total Tests', value: total, icon: ListTodo, color: 'text-blue-500', bg: 'bg-blue-500/10' },
-    { label: 'Passed', value: passed, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
-    { label: 'Failed', value: failed, icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
-    { label: 'Blocked', value: blocked, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
-    { label: 'Untested', value: untested, icon: Clock, color: 'text-zinc-500', bg: 'bg-zinc-500/10' },
+    { label: 'QA Passed', value: passed, icon: CheckCircle2, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+    { label: 'QA Failed', value: failed, icon: XCircle, color: 'text-red-500', bg: 'bg-red-500/10' },
+    { label: 'QA Blocked', value: blocked, icon: AlertCircle, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+    { label: 'QA Untested', value: untested, icon: Clock, color: 'text-zinc-500', bg: 'bg-zinc-500/10' },
   ];
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Dashboard</h1>
-        <p className="text-zinc-500 mt-2">Overview of your test execution status.</p>
+        <p className="text-zinc-500 mt-2">Overview of your test execution status (active suites only).</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -52,27 +58,25 @@ export function Dashboard({ testCases, onNavigate }: DashboardProps) {
         <div className="lg:col-span-2 bg-white rounded-xl border border-zinc-200 shadow-sm p-6">
           <h2 className="text-lg font-semibold text-zinc-900 mb-4">Recent Test Cases</h2>
           <div className="space-y-4">
-            {testCases.slice(0, 5).map(tc => (
+            {visibleCases.slice(0, 5).map(tc => (
               <div key={tc.id} className="flex items-center justify-between p-4 rounded-lg border border-zinc-100 bg-zinc-50/50 hover:bg-zinc-50 transition-colors">
                 <div>
                   <div className="flex items-center gap-2 mb-1">
                     <span className="text-xs font-mono text-zinc-500">{tc.testCaseId}</span>
                     <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                      tc.status === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
-                      tc.status === 'Fail' ? 'bg-red-100 text-red-700' :
-                      tc.status === 'Blocked' ? 'bg-amber-100 text-amber-700' :
-                      tc.status === 'Skipped' ? 'bg-zinc-200 text-zinc-700' :
+                      tc.qaStatus === 'Pass' ? 'bg-emerald-100 text-emerald-700' :
+                      tc.qaStatus === 'Fail' ? 'bg-red-100 text-red-700' :
+                      tc.qaStatus === 'Blocked' ? 'bg-amber-100 text-amber-700' :
+                      tc.qaStatus === 'Skipped' ? 'bg-zinc-200 text-zinc-700' :
                       'bg-zinc-100 text-zinc-600'
                     }`}>
-                      {tc.status}
+                      {tc.qaStatus}
                     </span>
                   </div>
                   <h3 className="text-sm font-medium text-zinc-900">{tc.title}</h3>
                 </div>
                 <button 
                   onClick={() => {
-                    // We'll need a way to navigate to view with ID.
-                    // For now, we'll just navigate to list.
                     onNavigate('list');
                   }}
                   className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
@@ -81,9 +85,9 @@ export function Dashboard({ testCases, onNavigate }: DashboardProps) {
                 </button>
               </div>
             ))}
-            {testCases.length === 0 && (
+            {visibleCases.length === 0 && (
               <div className="text-center py-8 text-zinc-500 text-sm">
-                No test cases yet.
+                No active test cases found.
               </div>
             )}
           </div>

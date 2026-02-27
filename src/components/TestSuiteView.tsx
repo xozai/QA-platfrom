@@ -1,13 +1,15 @@
-import { TestSuite, TestCase } from '@/types';
+import { TestSuite, TestCase, User } from '@/types';
 import { Button } from './ui/Button';
-import { ArrowLeft, Edit, FolderOpen } from 'lucide-react';
+import { ArrowLeft, Edit, FolderOpen, Link } from 'lucide-react';
 import { TestCaseGrid } from './TestCaseGrid';
 
 interface TestSuiteViewProps {
   testSuite: TestSuite;
   testCases: TestCase[];
+  users: User[];
   onBack: () => void;
   onEdit: () => void;
+  onCopyTestCase: (id: string) => void;
   onViewTestCase: (id: string) => void;
   onEditTestCase: (id: string) => void;
   onExecuteTestCase: (id: string) => void;
@@ -17,14 +19,22 @@ interface TestSuiteViewProps {
 export function TestSuiteView({ 
   testSuite, 
   testCases, 
+  users,
   onBack, 
   onEdit,
+  onCopyTestCase,
   onViewTestCase,
   onEditTestCase,
   onExecuteTestCase,
   onDeleteTestCase
 }: TestSuiteViewProps) {
   const suiteCases = testCases.filter(tc => tc.testSuiteId === testSuite.id);
+
+  const copySuiteLink = () => {
+    const url = `${window.location.origin}${window.location.pathname}?suiteId=${testSuite.id}`;
+    navigator.clipboard.writeText(url);
+    alert('Suite link copied to clipboard!');
+  };
 
   return (
     <div className="p-8 max-w-6xl mx-auto space-y-8">
@@ -39,9 +49,13 @@ export function TestSuiteView({
               <span className="text-sm font-medium text-zinc-500">Test Suite</span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-zinc-900">{testSuite.name}</h1>
+            {testSuite.jiraNumber && <span className="text-sm font-mono text-zinc-400">JIRA: {testSuite.jiraNumber}</span>}
           </div>
         </div>
         <div className="flex gap-3">
+          <Button variant="outline" onClick={copySuiteLink} className="gap-2">
+            <Link className="w-4 h-4" /> Copy Link
+          </Button>
           <Button variant="outline" onClick={onEdit} className="gap-2">
             <Edit className="w-4 h-4" /> Edit Suite
           </Button>
@@ -61,11 +75,14 @@ export function TestSuiteView({
           <TestCaseGrid 
             testCases={suiteCases}
             testSuites={[testSuite]}
-            onAdd={() => {}} // Read-only grid in this view, or we can pass the real handlers if we want
+            users={users}
+            onAdd={() => {}} 
             onUpdate={() => {}}
             onDelete={onDeleteTestCase}
+            onCopy={onCopyTestCase}
             onView={onViewTestCase}
             onExecute={onExecuteTestCase}
+            showHidden={true}
           />
         </div>
       </div>

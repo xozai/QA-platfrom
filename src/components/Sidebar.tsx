@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListTodo, PlusCircle, Settings, FolderOpen, FolderPlus } from 'lucide-react';
+import { LayoutDashboard, ListTodo, PlusCircle, Settings, FolderOpen, FolderPlus, Play, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface SidebarProps {
@@ -9,10 +9,12 @@ interface SidebarProps {
 export function Sidebar({ currentView, onNavigate }: SidebarProps) {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'runner', label: 'Execute Tests', icon: Play },
     { id: 'suites', label: 'Test Suites', icon: FolderOpen },
     { id: 'create-suite', label: 'New Test Suite', icon: FolderPlus },
     { id: 'list', label: 'Test Cases', icon: ListTodo },
     { id: 'create', label: 'New Test Case', icon: PlusCircle },
+    { id: 'users', label: 'User Management', icon: Users },
   ];
 
   return (

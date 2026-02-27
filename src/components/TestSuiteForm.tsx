@@ -1,20 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { TestSuite } from '@/types';
+import { TestSuite, User } from '@/types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { Textarea } from './ui/Textarea';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, User as UserIcon, Hash } from 'lucide-react';
 
 interface TestSuiteFormProps {
   initialData?: TestSuite;
+  users: User[];
   onSave: (data: Omit<TestSuite, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
-export function TestSuiteForm({ initialData, onSave, onCancel }: TestSuiteFormProps) {
+export function TestSuiteForm({ initialData, users, onSave, onCancel }: TestSuiteFormProps) {
   const [formData, setFormData] = useState<Omit<TestSuite, 'id' | 'createdAt' | 'updatedAt'>>({
     name: '',
     description: '',
+    ownerId: '',
+    jiraNumber: '',
   });
 
   useEffect(() => {
@@ -22,11 +25,13 @@ export function TestSuiteForm({ initialData, onSave, onCancel }: TestSuiteFormPr
       setFormData({
         name: initialData.name,
         description: initialData.description,
+        ownerId: initialData.ownerId || '',
+        jiraNumber: initialData.jiraNumber || '',
       });
     }
   }, [initialData]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -60,6 +65,37 @@ export function TestSuiteForm({ initialData, onSave, onCancel }: TestSuiteFormPr
             onChange={handleChange} 
             placeholder="e.g., Authentication Module" 
           />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-900 flex items-center gap-2">
+              <UserIcon className="w-4 h-4" /> Owner
+            </label>
+            <select
+              name="ownerId"
+              value={formData.ownerId}
+              onChange={handleChange}
+              className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-950"
+            >
+              <option value="">Select Owner</option>
+              {users.map(user => (
+                <option key={user.id} value={user.id}>{user.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-zinc-900 flex items-center gap-2">
+              <Hash className="w-4 h-4" /> JIRA Number
+            </label>
+            <Input 
+              name="jiraNumber" 
+              value={formData.jiraNumber} 
+              onChange={handleChange} 
+              placeholder="e.g., SCO-1234" 
+            />
+          </div>
         </div>
 
         <div className="space-y-2">

@@ -15,7 +15,13 @@ export function TestCaseExecution({ testCase, onBack, onSaveResult }: TestCaseEx
   const [stepResults, setStepResults] = useState<Record<string, 'pass' | 'fail' | null>>(
     testCase.steps.reduce((acc, step) => ({ ...acc, [step.id]: null }), {})
   );
-  const [overallStatus, setOverallStatus] = useState<TestStatus>(testCase.status);
+  const [actualResults, setActualResults] = useState<Record<string, string>>(
+    testCase.steps.reduce((acc, step) => ({ ...acc, [step.id]: '' }), {})
+  );
+  const [comments, setComments] = useState<Record<string, string>>(
+    testCase.steps.reduce((acc, step) => ({ ...acc, [step.id]: '' }), {})
+  );
+  const [overallStatus, setOverallStatus] = useState<TestStatus>(testCase.qaStatus || 'Untested');
 
   const handleStepResult = (stepId: string, result: 'pass' | 'fail') => {
     setStepResults(prev => ({ ...prev, [stepId]: result }));
@@ -33,10 +39,14 @@ export function TestCaseExecution({ testCase, onBack, onSaveResult }: TestCaseEx
   const anyStepFailed = Object.values(stepResults).some(res => res === 'fail');
 
   // Auto-suggest status based on steps
-  if (allStepsCompleted && overallStatus === 'Untested') {
-    if (anyStepFailed) setOverallStatus('Fail');
-    else setOverallStatus('Pass');
+  if (allStepsCompleted) {
+    const suggestedStatus = anyStepFailed ? 'Fail' : 'Pass';
+    if (overallStatus !== suggestedStatus && (overallStatus === 'Untested' || overallStatus === 'Pass' || overallStatus === 'Fail')) {
+      setOverallStatus(suggestedStatus);
+    }
   }
+
+  const currentStep = testCase.steps[currentStepIndex];
 
   return (
     <div className="p-8 max-w-5xl mx-auto space-y-8 h-full flex flex-col">
@@ -163,17 +173,41 @@ export function TestCaseExecution({ testCase, onBack, onSaveResult }: TestCaseEx
           </div>
           
           <div className="flex-1 p-8 overflow-y-auto space-y-8">
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Action to Perform</h3>
-              <div className="bg-indigo-50/50 border border-indigo-100 p-6 rounded-xl text-lg text-indigo-950 whitespace-pre-wrap leading-relaxed">
-                {testCase.steps[currentStepIndex].action}
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Action to Perform</h3>
+                <div className="bg-indigo-50/50 border border-indigo-100 p-6 rounded-xl text-lg text-indigo-950 whitespace-pre-wrap leading-relaxed">
+                  {currentStep.action}
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Expected Result</h3>
+                <div className="bg-emerald-50/50 border border-emerald-100 p-6 rounded-xl text-lg text-emerald-950 whitespace-pre-wrap leading-relaxed">
+                  {currentStep.expectedResult}
+                </div>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Expected Result</h3>
-              <div className="bg-emerald-50/50 border border-emerald-100 p-6 rounded-xl text-lg text-emerald-950 whitespace-pre-wrap leading-relaxed">
-                {testCase.steps[currentStepIndex].expectedResult}
+            <div className="grid grid-cols-2 gap-8">
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Actual Results</h3>
+                <textarea
+                  value={actualResults[currentStep.id]}
+                  onChange={(e) => setActualResults(prev => ({ ...prev, [currentStep.id]: e.target.value }))}
+                  placeholder="Enter actual results..."
+                  className="w-full h-32 p-4 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
+              </div>
+
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-zinc-500 uppercase tracking-wider">Comments</h3>
+                <textarea
+                  value={comments[currentStep.id]}
+                  onChange={(e) => setComments(prev => ({ ...prev, [currentStep.id]: e.target.value }))}
+                  placeholder="Enter comments..."
+                  className="w-full h-32 p-4 rounded-xl border border-zinc-200 focus:ring-2 focus:ring-indigo-500 outline-none text-sm"
+                />
               </div>
             </div>
           </div>
@@ -184,9 +218,9 @@ export function TestCaseExecution({ testCase, onBack, onSaveResult }: TestCaseEx
               variant="outline"
               className={cn(
                 "w-48 gap-3 border-2 hover:bg-red-50 hover:text-red-700 hover:border-red-200 transition-all",
-                stepResults[testCase.steps[currentStepIndex].id] === 'fail' ? "bg-red-50 text-red-700 border-red-500" : ""
+                stepResults[currentStep.id] === 'fail' ? "bg-red-50 text-red-700 border-red-500" : ""
               )}
-              onClick={() => handleStepResult(testCase.steps[currentStepIndex].id, 'fail')}
+              onClick={() => handleStepResult(currentStep.id, 'fail')}
             >
               <XCircle className="w-5 h-5" /> Fail Step
             </Button>
@@ -194,11 +228,11 @@ export function TestCaseExecution({ testCase, onBack, onSaveResult }: TestCaseEx
               size="lg" 
               className={cn(
                 "w-48 gap-3 border-2 transition-all",
-                stepResults[testCase.steps[currentStepIndex].id] === 'pass' 
+                stepResults[currentStep.id] === 'pass' 
                   ? "bg-emerald-500 text-white border-emerald-600 hover:bg-emerald-600" 
                   : "bg-white text-zinc-900 border-zinc-200 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-200"
               )}
-              onClick={() => handleStepResult(testCase.steps[currentStepIndex].id, 'pass')}
+              onClick={() => handleStepResult(currentStep.id, 'pass')}
             >
               <CheckCircle2 className="w-5 h-5" /> Pass Step
             </Button>

@@ -21,9 +21,26 @@ export function TestCaseView({ testCase, onBack, onEdit, onExecute }: TestCaseVi
           <div>
             <div className="flex items-center gap-3 mb-1">
               <span className="text-sm font-mono text-zinc-500 bg-zinc-100 px-2 py-0.5 rounded-md">{testCase.testCaseId}</span>
-              <Badge variant={testCase.status === 'Pass' ? 'success' : testCase.status === 'Fail' ? 'destructive' : testCase.status === 'Blocked' ? 'warning' : 'outline'}>
-                {testCase.status}
-              </Badge>
+              <div className="flex gap-1.5">
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] text-zinc-400 uppercase font-bold leading-none">QA</span>
+                  <Badge variant={testCase.qaStatus === 'Pass' ? 'success' : testCase.qaStatus === 'Fail' ? 'destructive' : testCase.qaStatus === 'Blocked' ? 'warning' : 'outline'} className="text-[10px] px-1.5 py-0">
+                    {testCase.qaStatus}
+                  </Badge>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] text-zinc-400 uppercase font-bold leading-none">UAT</span>
+                  <Badge variant={testCase.uatStatus === 'Pass' ? 'success' : testCase.uatStatus === 'Fail' ? 'destructive' : testCase.uatStatus === 'Blocked' ? 'warning' : 'outline'} className="text-[10px] px-1.5 py-0">
+                    {testCase.uatStatus}
+                  </Badge>
+                </div>
+                <div className="flex flex-col items-center">
+                  <span className="text-[8px] text-zinc-400 uppercase font-bold leading-none">BAT</span>
+                  <Badge variant={testCase.batStatus === 'Pass' ? 'success' : testCase.batStatus === 'Fail' ? 'destructive' : testCase.batStatus === 'Blocked' ? 'warning' : 'outline'} className="text-[10px] px-1.5 py-0">
+                    {testCase.batStatus}
+                  </Badge>
+                </div>
+              </div>
               <Badge variant={testCase.priority === 'High' ? 'destructive' : testCase.priority === 'Medium' ? 'warning' : 'info'}>
                 {testCase.priority} Priority
               </Badge>
