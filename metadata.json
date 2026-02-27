@@ -1,0 +1,5 @@
+{
+  "name": "QA Test Manager",
+  "description": "A web application to create, manage, and execute QA test scripts and test cases.",
+  "requestFramePermissions": []
+}
