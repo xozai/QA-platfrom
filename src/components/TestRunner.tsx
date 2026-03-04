@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { TestSuite, TestCase, TestStatus, User, TesterRole } from '@/types';
 import { Button } from './ui/Button';
 import { Badge } from './ui/Badge';
-import { CheckCircle2, XCircle, AlertCircle, User as UserIcon, FolderOpen, Search, ChevronLeft, Play, Eye, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+import { CheckCircle2, XCircle, AlertCircle, User as UserIcon, FolderOpen, Search, ChevronLeft, Play, Eye, ArrowUpDown, ArrowUp, ArrowDown, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TestCaseExecution } from './TestCaseExecution';
+import Papa from 'papaparse';
 
 interface TestRunnerProps {
   testSuites: TestSuite[];
@@ -22,7 +23,7 @@ export function TestRunner({ testSuites, testCases, users, onUpdateTestCase }: T
   const [testerRole, setTesterRole] = useState<TesterRole>('QA tester');
   const [executingCaseId, setExecutingCaseId] = useState<string | null>(null);
   const [viewingCaseId, setViewingCaseId] = useState<string | null>(null);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
+  const [sortConfig, setSortConfig] = useState<Array<{ key: string; direction: 'asc' | 'desc' }>>([]);
 
   const toggleSuite = (id: string) => {
     setSelectedSuiteIds(prev => 
@@ -33,21 +34,42 @@ export function TestRunner({ testSuites, testCases, users, onUpdateTestCase }: T
   const activeCases = testCases.filter(tc => tc.testSuiteId && selectedSuiteIds.includes(tc.testSuiteId));
   const selectedExecutor = users.find(u => u.id === executorId);
 
-  const handleSort = (key: string) => {
-    setSortConfig(prev => ({
-      key,
-      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
-    }));
+  const handleSort = (key: string, isMulti: boolean) => {
+    setSortConfig(prev => {
+      const existingIndex = prev.findIndex(s => s.key === key);
+      
+      if (existingIndex > -1) {
+        const existing = prev[existingIndex];
+        if (existing.direction === 'asc') {
+          const updated = [...prev];
+          updated[existingIndex] = { ...existing, direction: 'desc' };
+          return updated;
+        } else {
+          return prev.filter(s => s.key !== key);
+        }
+      } else {
+        const newSort = { key, direction: 'asc' as const };
+        if (isMulti) {
+          return [...prev, newSort];
+        } else {
+          return [newSort];
+        }
+      }
+    });
   };
 
   const sortedCases = [...activeCases].sort((a, b) => {
-    if (!sortConfig.direction || !sortConfig.key) return 0;
+    if (sortConfig.length === 0) return 0;
     
-    const aVal = (a as any)[sortConfig.key] || '';
-    const bVal = (b as any)[sortConfig.key] || '';
+    for (const { key, direction } of sortConfig) {
+      const dir = direction === 'asc' ? 1 : -1;
+      const aVal = (a as any)[key] || '';
+      const bVal = (b as any)[key] || '';
+      
+      if (aVal < bVal) return -1 * dir;
+      if (aVal > bVal) return 1 * dir;
+    }
     
-    if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
     return 0;
   });
 
@@ -69,8 +91,42 @@ export function TestRunner({ testSuites, testCases, users, onUpdateTestCase }: T
   };
 
   const renderSortIcon = (key: string) => {
-    if (sortConfig.key !== key) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
-    return sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />;
+    const sortInfo = sortConfig.find(s => s.key === key);
+    const sortIndex = sortConfig.findIndex(s => s.key === key);
+    
+    if (!sortInfo) return <ArrowUpDown className="w-3 h-3 opacity-30" />;
+    
+    return (
+      <div className="flex items-center">
+        {sortInfo.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-indigo-600" /> : <ArrowDown className="w-3 h-3 text-indigo-600" />}
+        {sortConfig.length > 1 && sortIndex > -1 && (
+          <span className="text-[8px] ml-0.5 text-indigo-600 font-bold">{sortIndex + 1}</span>
+        )}
+      </div>
+    );
+  };
+
+  const downloadExecutionGrid = () => {
+    const data = sortedCases.map(tc => ({
+      ID: tc.testCaseId,
+      Title: tc.title,
+      Executor: selectedExecutor?.name || 'Unassigned',
+      Role: testerRole,
+      Status: getStatusForRole(tc),
+      Description: tc.description,
+      Priority: tc.priority
+    }));
+
+    const csv = Papa.unparse(data);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', `execution_results_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   if (step === 'suites') {
@@ -225,6 +281,9 @@ export function TestRunner({ testSuites, testCases, users, onUpdateTestCase }: T
               </div>
             </div>
           </div>
+          <Button variant="outline" onClick={downloadExecutionGrid} className="gap-2">
+            <Download className="w-4 h-4" /> Export CSV
+          </Button>
         </div>
 
         <div className="bg-white rounded-xl border border-zinc-200 shadow-sm flex-1 min-h-0 overflow-hidden flex flex-col">
@@ -232,10 +291,10 @@ export function TestRunner({ testSuites, testCases, users, onUpdateTestCase }: T
             <table className="w-full text-left border-collapse">
               <thead className="sticky top-0 bg-zinc-50 border-b border-zinc-200 z-10">
                 <tr>
-                  <th className="p-4 text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-zinc-900" onClick={() => handleSort('testCaseId')}>
+                  <th className="p-4 text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-zinc-900" onClick={(e) => handleSort('testCaseId', e.shiftKey)}>
                     <div className="flex items-center gap-2">ID {renderSortIcon('testCaseId')}</div>
                   </th>
-                  <th className="p-4 text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-zinc-900" onClick={() => handleSort('title')}>
+                  <th className="p-4 text-xs font-bold text-zinc-500 uppercase tracking-wider cursor-pointer hover:text-zinc-900" onClick={(e) => handleSort('title', e.shiftKey)}>
                     <div className="flex items-center gap-2">Title {renderSortIcon('title')}</div>
                   </th>
                   <th className="p-4 text-xs font-bold text-zinc-500 uppercase tracking-wider">Executor</th>

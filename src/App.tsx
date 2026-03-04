@@ -188,6 +188,7 @@ export default function App() {
             onEditTestCase={(id) => handleNavigate('edit', id)}
             onExecuteTestCase={(id) => handleNavigate('execute', id)}
             onDeleteTestCase={confirmDeleteTestCase}
+            onAddTestCase={addTestCase}
           />
         )}
 

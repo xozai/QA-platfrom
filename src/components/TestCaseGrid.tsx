@@ -42,18 +42,33 @@ export function TestCaseGrid({
   const [filterText, setFilterText] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' | null }>({ key: '', direction: null });
+  const [sortConfig, setSortConfig] = useState<Array<{ key: string; direction: 'asc' | 'desc' }>>([]);
   
   const [stepsModalOpen, setStepsModalOpen] = useState(false);
   const [currentSteps, setCurrentSteps] = useState<TestStep[]>([]);
 
-  const handleSort = (key: string) => {
+  const handleSort = (key: string, isMulti: boolean) => {
     setSortConfig(prev => {
-      if (prev.key === key) {
-        if (prev.direction === 'asc') return { key, direction: 'desc' };
-        if (prev.direction === 'desc') return { key: '', direction: null };
+      const existingIndex = prev.findIndex(s => s.key === key);
+      
+      if (existingIndex > -1) {
+        const existing = prev[existingIndex];
+        if (existing.direction === 'asc') {
+          const updated = [...prev];
+          updated[existingIndex] = { ...existing, direction: 'desc' };
+          return updated;
+        } else {
+          // Remove from sort
+          return prev.filter(s => s.key !== key);
+        }
+      } else {
+        const newSort = { key, direction: 'asc' as const };
+        if (isMulti) {
+          return [...prev, newSort];
+        } else {
+          return [newSort];
+        }
       }
-      return { key, direction: 'asc' };
     });
   };
 
@@ -102,28 +117,29 @@ export function TestCaseGrid({
     
     return true;
   }).sort((a, b) => {
-    if (!sortConfig.key || !sortConfig.direction) return 0;
+    if (sortConfig.length === 0) return 0;
     
-    const direction = sortConfig.direction === 'asc' ? 1 : -1;
-    const key = sortConfig.key;
-    
-    let valA: any = '';
-    let valB: any = '';
+    for (const { key, direction } of sortConfig) {
+      const dir = direction === 'asc' ? 1 : -1;
+      let valA: any = '';
+      let valB: any = '';
 
-    const suiteA = testSuites.find(s => s.id === a.testSuiteId);
-    const suiteB = testSuites.find(s => s.id === b.testSuiteId);
-    const ownerA = users.find(u => u.id === suiteA?.ownerId);
-    const ownerB = users.find(u => u.id === suiteB?.ownerId);
+      const suiteA = testSuites.find(s => s.id === a.testSuiteId);
+      const suiteB = testSuites.find(s => s.id === b.testSuiteId);
+      const ownerA = users.find(u => u.id === suiteA?.ownerId);
+      const ownerB = users.find(u => u.id === suiteB?.ownerId);
 
-    switch (key) {
-      case 'suite': valA = suiteA?.name || ''; valB = suiteB?.name || ''; break;
-      case 'jira': valA = suiteA?.jiraNumber || ''; valB = suiteB?.jiraNumber || ''; break;
-      case 'owner': valA = ownerA?.name || ''; valB = ownerB?.name || ''; break;
-      default: valA = (a as any)[key] || ''; valB = (b as any)[key] || '';
+      switch (key) {
+        case 'suite': valA = suiteA?.name || ''; valB = suiteB?.name || ''; break;
+        case 'jira': valA = suiteA?.jiraNumber || ''; valB = suiteB?.jiraNumber || ''; break;
+        case 'owner': valA = ownerA?.name || ''; valB = ownerB?.name || ''; break;
+        default: valA = (a as any)[key] || ''; valB = (b as any)[key] || '';
+      }
+
+      if (valA < valB) return -1 * dir;
+      if (valA > valB) return 1 * dir;
     }
-
-    if (valA < valB) return -1 * direction;
-    if (valA > valB) return 1 * direction;
+    
     return 0;
   });
 
@@ -394,21 +410,32 @@ export function TestCaseGrid({
                   { label: 'Test Data', key: 'testData' },
                   { label: 'Reqs', key: 'relatedRequirements' },
                   { label: 'Steps', key: 'steps' }
-                ].map(col => (
-                  <th key={col.key} className="px-4 py-3 font-medium">
-                    <button 
-                      onClick={() => handleSort(col.key)}
-                      className="flex items-center gap-1 hover:text-zinc-900 transition-colors uppercase"
-                    >
-                      {col.label}
-                      {sortConfig.key === col.key ? (
-                        sortConfig.direction === 'asc' ? <ArrowUp className="w-3 h-3" /> : <ArrowDown className="w-3 h-3" />
-                      ) : (
-                        <ArrowUpDown className="w-3 h-3 opacity-30" />
-                      )}
-                    </button>
-                  </th>
-                ))}
+                ].map(col => {
+                  const sortInfo = sortConfig.find(s => s.key === col.key);
+                  const sortIndex = sortConfig.findIndex(s => s.key === col.key);
+                  
+                  return (
+                    <th key={col.key} className="px-4 py-3 font-medium">
+                      <button 
+                        onClick={(e) => handleSort(col.key, e.shiftKey)}
+                        className="flex items-center gap-1 hover:text-zinc-900 transition-colors uppercase group"
+                        title="Click to sort, Shift+Click for multi-sort"
+                      >
+                        {col.label}
+                        <div className="flex items-center">
+                          {sortInfo ? (
+                            sortInfo.direction === 'asc' ? <ArrowUp className="w-3 h-3 text-indigo-600" /> : <ArrowDown className="w-3 h-3 text-indigo-600" />
+                          ) : (
+                            <ArrowUpDown className="w-3 h-3 opacity-30 group-hover:opacity-100" />
+                          )}
+                          {sortConfig.length > 1 && sortIndex > -1 && (
+                            <span className="text-[8px] ml-0.5 text-indigo-600 font-bold">{sortIndex + 1}</span>
+                          )}
+                        </div>
+                      </button>
+                    </th>
+                  );
+                })}
                 <th className="px-4 py-3 font-medium sticky right-0 bg-zinc-50 shadow-[-4px_0_6px_-1px_rgba(0,0,0,0.05)] text-right">Actions</th>
               </tr>
               {showFilters && (
